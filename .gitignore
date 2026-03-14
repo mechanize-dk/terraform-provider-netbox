@@ -37,3 +37,6 @@ website/vendor
 
 # Locally compiled provider
 terraform-provider-netbox
+
+# Local AI assistant context
+CLAUDE.md
