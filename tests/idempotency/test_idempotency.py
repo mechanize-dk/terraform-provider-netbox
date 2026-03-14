@@ -45,6 +45,8 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 
 try:
     import requests
+    from requests.packages.urllib3.exceptions import InsecureRequestWarning
+    requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 except ImportError:
     print("ERROR: 'requests' library is required. Install with:  pip install requests")
     sys.exit(1)
@@ -77,6 +79,7 @@ class NetBoxClient:
         self.base_url = base_url.rstrip("/")
         self._session = requests.Session()
         self._session.auth = (username, password)
+        self._session.verify = False  # allow self-signed certificates
         self._session.headers.update({
             "Content-Type": "application/json",
             "Accept":       "application/json",
@@ -88,27 +91,40 @@ class NetBoxClient:
 
     def connect(self) -> str:
         """Provision (or retrieve) an API token and return it."""
-        # Try the newer "provision" endpoint first
-        r = self._session.post(f"{self.base_url}/api/users/tokens/provision/", json={})
+        username, password = self._session.auth
+
+        # Try the newer "provision" endpoint (credentials go in body)
+        r = self._session.post(
+            f"{self.base_url}/api/users/tokens/provision/",
+            json={"username": username, "password": password},
+        )
         if r.status_code == 201:
             data = r.json()
             self.token     = data["key"]
             self._token_id = data["id"]
+            self._use_token()
             return self.token
 
-        # Fall back to listing existing tokens for this user
+        # Fall back to listing existing tokens for this user (still using basic auth)
         r = self._session.get(f"{self.base_url}/api/users/tokens/")
-        r.raise_for_status()
-        results = r.json().get("results", [])
-        if results:
-            self.token     = results[0]["key"]
-            self._token_id = results[0]["id"]
-            return self.token
+        if r.ok:
+            results = r.json().get("results", [])
+            if results:
+                self.token     = results[0]["key"]
+                self._token_id = results[0]["id"]
+                self._use_token()
+                return self.token
 
         raise RuntimeError(
             "Could not get or create a NetBox API token. "
+            f"Provision status: {r.status_code}. "
             "Verify the credentials and that the user has token permissions."
         )
+
+    def _use_token(self):
+        """Switch the session from basic auth to token auth."""
+        self._session.auth = None
+        self._session.headers["Authorization"] = f"Token {self.token}"
 
     def disconnect(self):
         """Delete the token that was created by connect() (if any)."""
@@ -358,8 +374,8 @@ resource "netbox_contact_role" "test" {{
 }}""",
         "update_tf": """\
 resource "netbox_contact_role" "test" {{
-  name        = "idem-crole-{uid}"
-  description = "updated"
+  name = "idem-crole-{uid}"
+  slug = "idem-crole-{uid}-v2"
 }}""",
         "api_path":    "tenancy/contact-roles",
         "api_payload": lambda uid, p: {
@@ -474,8 +490,8 @@ resource "netbox_platform" "test" {{
 }}""",
         "update_tf": """\
 resource "netbox_platform" "test" {{
-  name        = "idem-platform-{uid}"
-  description = "updated"
+  name = "idem-platform-{uid}"
+  slug = "idem-platform-{uid}-v2"
 }}""",
         "api_path":    "dcim/platforms",
         "api_payload": lambda uid, p: {
@@ -534,8 +550,8 @@ resource "netbox_manufacturer" "test" {{
 }}""",
         "update_tf": """\
 resource "netbox_manufacturer" "test" {{
-  name        = "idem-mfr-{uid}"
-  description = "updated"
+  name = "idem-mfr-{uid}"
+  slug = "idem-mfr-{uid}-v2"
 }}""",
         "api_path":    "dcim/manufacturers",
         "api_payload": lambda uid, p: {
@@ -575,8 +591,8 @@ resource "netbox_cluster_type" "test" {{
 }}""",
         "update_tf": """\
 resource "netbox_cluster_type" "test" {{
-  name        = "idem-cltype-{uid}"
-  description = "updated"
+  name = "idem-cltype-{uid}"
+  slug = "idem-cltype-{uid}-v2"
 }}""",
         "api_path":    "virtualization/cluster-types",
         "api_payload": lambda uid, p: {
@@ -895,12 +911,9 @@ def run_test(
         _section(f"  [{tc['name']}] 1/2 normal CRUD")
 
         write_tf(work_dir, provider, create_hcl)
-        ok_init, out_init = tf.init(work_dir)
-        if not ok_init:
-            result.error = f"init failed:\n{out_init}"
-            if verbose: print(out_init)
-            return result
-
+        # NOTE: do NOT call terraform init when using dev_overrides — Terraform
+        # itself warns: "Skip terraform init when using provider development
+        # overrides. It is not necessary and may error unexpectedly."
         ok_apply, out_apply = tf.apply(work_dir)
         if verbose: print(out_apply)
         if not ok_apply:

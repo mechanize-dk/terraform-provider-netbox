@@ -108,12 +108,14 @@ func resourceNetboxRouteTargetUpdate(d *schema.ResourceData, m interface{}) erro
 	data := models.WritableRouteTarget{}
 
 	name := d.Get("name").(string)
-	tenantID := int64(d.Get("tenant_id").(int))
 	description := d.Get("description").(string)
 
 	data.Name = &name
 	data.Description = description
-	data.Tenant = &tenantID
+	if tenantID, ok := d.GetOk("tenant_id"); ok {
+		tenantIDInt64 := int64(tenantID.(int))
+		data.Tenant = &tenantIDInt64
+	}
 	data.Tags = []*models.NestedTag{}
 
 	params := ipam.NewIpamRouteTargetsUpdateParams().WithID(id).WithData(&data)
