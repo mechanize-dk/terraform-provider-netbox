@@ -1089,6 +1089,11 @@ def main():
             cases = [tc for tc in cases if args.filter in tc["name"]]
             print(_info(f"Filter: '{args.filter}'  →  {len(cases)} test(s)"))
 
+        # ── List resources under test ────────────────────────────────────────
+        _banner(f"Resources under test ({len(cases)})")
+        for i, tc in enumerate(cases, 1):
+            print(f"  {i:2}. {tc['name']}")
+
         # ── Run tests ────────────────────────────────────────────────────────
         _banner(f"Running {len(cases)} test(s)")
         results: List[TestResult] = []
