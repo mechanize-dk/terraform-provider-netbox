@@ -40,3 +40,4 @@ terraform-provider-netbox
 
 # Local AI assistant context
 CLAUDE.md
+.claude/
