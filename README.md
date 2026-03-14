@@ -21,7 +21,6 @@ In addition, the following new resource has been added:
 
 - **`netbox_asn_extended`** — extends `netbox_asn` with support for the `tenant_id` parameter, which is available in the NetBox API but missing from the upstream resource.
 
-
 ## From the original Netbox Provider
 
 The Terraform Netbox provider is a plugin for Terraform that allows for the full lifecycle management of [Netbox](https://netboxlabs.com/docs/netbox/) resources.
