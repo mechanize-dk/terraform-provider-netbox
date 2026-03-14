@@ -54,6 +54,10 @@ func resourceNetboxRouteTargetCreate(d *schema.ResourceData, m interface{}) erro
 	params := ipam.NewIpamRouteTargetsCreateParams().WithData(&data)
 	res, err := api.Ipam.IpamRouteTargetsCreate(params, nil)
 	if err != nil {
+		if id, lookupErr := mechanizeLookupRouteTarget(api, d); lookupErr == nil {
+			d.SetId(strconv.FormatInt(id, 10))
+			return resourceNetboxRouteTargetRead(d, m)
+		}
 		return err
 	}
 	d.SetId(strconv.FormatInt(res.GetPayload().ID, 10))

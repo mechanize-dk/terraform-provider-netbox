@@ -70,6 +70,10 @@ func resourceNetboxClusterGroupCreate(d *schema.ResourceData, m interface{}) err
 
 	res, err := api.Virtualization.VirtualizationClusterGroupsCreate(params, nil)
 	if err != nil {
+		if id, lookupErr := mechanizeLookupClusterGroup(api, d); lookupErr == nil {
+			d.SetId(strconv.FormatInt(id, 10))
+			return resourceNetboxClusterGroupRead(d, m)
+		}
 		return err
 	}
 

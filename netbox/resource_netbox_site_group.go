@@ -78,6 +78,10 @@ func resourceNetboxSiteGroupCreate(d *schema.ResourceData, m interface{}) error 
 
 	res, err := api.Dcim.DcimSiteGroupsCreate(params, nil)
 	if err != nil {
+		if id, lookupErr := mechanizeLookupSiteGroup(api, d); lookupErr == nil {
+			d.SetId(strconv.FormatInt(id, 10))
+			return resourceNetboxSiteGroupRead(d, m)
+		}
 		return err
 	}
 

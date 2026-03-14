@@ -76,6 +76,10 @@ func resourceNetboxContactGroupCreate(d *schema.ResourceData, m interface{}) err
 
 	res, err := api.Tenancy.TenancyContactGroupsCreate(params, nil)
 	if err != nil {
+		if id, lookupErr := mechanizeLookupContactGroup(api, d); lookupErr == nil {
+			d.SetId(strconv.FormatInt(id, 10))
+			return resourceNetboxContactGroupRead(d, m)
+		}
 		return err
 	}
 

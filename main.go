@@ -3,7 +3,7 @@ package main
 import (
 	"flag"
 
-	"github.com/e-breuninger/terraform-provider-netbox/netbox"
+	"github.com/mechanize-dk/terraform-provider-netbox/netbox"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/plugin"
 )
@@ -22,7 +22,7 @@ func main() {
 
 	plugin.Serve(&plugin.ServeOpts{
 		Debug:        debug,
-		ProviderAddr: "registry.terraform.io/e-breuninger/netbox",
+		ProviderAddr: "registry.terraform.io/mechanize-dk/netbox",
 		ProviderFunc: func() *schema.Provider {
 			return netbox.Provider()
 		},

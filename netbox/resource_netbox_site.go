@@ -195,6 +195,10 @@ func resourceNetboxSiteCreate(d *schema.ResourceData, m interface{}) error {
 
 	res, err := api.Dcim.DcimSitesCreate(params, nil)
 	if err != nil {
+		if id, lookupErr := mechanizeLookupSite(api, d); lookupErr == nil {
+			d.SetId(strconv.FormatInt(id, 10))
+			return resourceNetboxSiteRead(d, m)
+		}
 		return err
 	}
 

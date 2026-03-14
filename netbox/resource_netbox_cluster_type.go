@@ -62,7 +62,10 @@ func resourceNetboxClusterTypeCreate(d *schema.ResourceData, m interface{}) erro
 
 	res, err := api.Virtualization.VirtualizationClusterTypesCreate(params, nil)
 	if err != nil {
-		//return errors.New(getTextFromError(err))
+		if id, lookupErr := mechanizeLookupClusterType(api, d); lookupErr == nil {
+			d.SetId(strconv.FormatInt(id, 10))
+			return resourceNetboxClusterTypeRead(d, m)
+		}
 		return err
 	}
 

@@ -72,6 +72,10 @@ func resourceNetboxIpamRoleCreate(d *schema.ResourceData, m interface{}) error {
 	params := ipam.NewIpamRolesCreateParams().WithData(&data)
 	res, err := api.Ipam.IpamRolesCreate(params, nil)
 	if err != nil {
+		if id, lookupErr := mechanizeLookupIpamRole(api, d); lookupErr == nil {
+			d.SetId(strconv.FormatInt(id, 10))
+			return resourceNetboxIpamRoleRead(d, m)
+		}
 		return err
 	}
 	d.SetId(strconv.FormatInt(res.GetPayload().ID, 10))

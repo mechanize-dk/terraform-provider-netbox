@@ -85,6 +85,10 @@ func resourceNetboxVrfCreate(d *schema.ResourceData, m interface{}) error {
 
 	res, err := api.Ipam.IpamVrfsCreate(params, nil)
 	if err != nil {
+		if id, lookupErr := mechanizeLookupVrf(api, d); lookupErr == nil {
+			d.SetId(strconv.FormatInt(id, 10))
+			return resourceNetboxVrfRead(d, m)
+		}
 		return err
 	}
 

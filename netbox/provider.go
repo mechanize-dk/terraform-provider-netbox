@@ -131,6 +131,7 @@ func Provider() *schema.Provider {
 			"netbox_token":                      resourceNetboxToken(),
 			"netbox_custom_field":               resourceCustomField(),
 			"netbox_asn":                        resourceNetboxAsn(),
+			"netbox_asn_extended":               resourceNetboxAsnExtended(),
 			"netbox_location":                   resourceNetboxLocation(),
 			"netbox_site_group":                 resourceNetboxSiteGroup(),
 			"netbox_rack":                       resourceNetboxRack(),

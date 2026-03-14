@@ -1,5 +1,9 @@
 package netbox
 
+// MECHANIZE FORK: netbox_asn_extended resource
+// Based on netbox_asn, adding support for the tenant_id parameter which
+// is available in the NetBox API but missing from the upstream resource.
+
 import (
 	"strconv"
 
@@ -8,17 +12,14 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
-func resourceNetboxAsn() *schema.Resource {
+func resourceNetboxAsnExtended() *schema.Resource {
 	return &schema.Resource{
-		Create: resourceNetboxAsnCreate,
-		Read:   resourceNetboxAsnRead,
-		Update: resourceNetboxAsnUpdate,
-		Delete: resourceNetboxAsnDelete,
+		Create: resourceNetboxAsnExtendedCreate,
+		Read:   resourceNetboxAsnExtendedRead,
+		Update: resourceNetboxAsnExtendedUpdate,
+		Delete: resourceNetboxAsnExtendedDelete,
 
-		Description: `:meta:subcategory:IP Address Management (IPAM):From the [official documentation](https://docs.netbox.dev/en/stable/features/ipam/#asn):
-> ASN is short for Autonomous System Number. This identifier is used in the BGP protocol to identify which "autonomous system" a particular prefix is originating and transiting through.
->
-> The AS number model within NetBox allows you to model some of this real-world relationship.`,
+		Description: `:meta:subcategory:IP Address Management (IPAM):Extended version of netbox_asn that adds support for the tenant_id parameter.`,
 
 		Schema: map[string]*schema.Schema{
 			"asn": {
@@ -30,6 +31,11 @@ func resourceNetboxAsn() *schema.Resource {
 				Type:        schema.TypeInt,
 				Required:    true,
 				Description: "ID for the RIR for the AS Number record",
+			},
+			"tenant_id": {
+				Type:        schema.TypeInt,
+				Optional:    true,
+				Description: "ID of the tenant to assign to the AS Number record",
 			},
 			"description": {
 				Type:        schema.TypeString,
@@ -49,7 +55,7 @@ func resourceNetboxAsn() *schema.Resource {
 	}
 }
 
-func resourceNetboxAsnCreate(d *schema.ResourceData, m interface{}) error {
+func resourceNetboxAsnExtendedCreate(d *schema.ResourceData, m interface{}) error {
 	api := m.(*providerState)
 
 	data := models.WritableASN{}
@@ -59,6 +65,11 @@ func resourceNetboxAsnCreate(d *schema.ResourceData, m interface{}) error {
 
 	rir := int64(d.Get("rir_id").(int))
 	data.Rir = &rir
+
+	if tenantID, ok := d.GetOk("tenant_id"); ok {
+		tenantIDInt64 := int64(tenantID.(int))
+		data.Tenant = &tenantIDInt64
+	}
 
 	data.Description = d.Get("description").(string)
 	data.Comments = d.Get("comments").(string)
@@ -74,17 +85,17 @@ func resourceNetboxAsnCreate(d *schema.ResourceData, m interface{}) error {
 	if err != nil {
 		if id, lookupErr := mechanizeLookupAsn(api, d); lookupErr == nil {
 			d.SetId(strconv.FormatInt(id, 10))
-			return resourceNetboxAsnRead(d, m)
+			return resourceNetboxAsnExtendedRead(d, m)
 		}
 		return err
 	}
 
 	d.SetId(strconv.FormatInt(res.GetPayload().ID, 10))
 
-	return resourceNetboxAsnRead(d, m)
+	return resourceNetboxAsnExtendedRead(d, m)
 }
 
-func resourceNetboxAsnRead(d *schema.ResourceData, m interface{}) error {
+func resourceNetboxAsnExtendedRead(d *schema.ResourceData, m interface{}) error {
 	api := m.(*providerState)
 	id, _ := strconv.ParseInt(d.Id(), 10, 64)
 	params := ipam.NewIpamAsnsReadParams().WithID(id)
@@ -95,7 +106,6 @@ func resourceNetboxAsnRead(d *schema.ResourceData, m interface{}) error {
 		if errresp, ok := err.(*ipam.IpamAsnsReadDefault); ok {
 			errorcode := errresp.Code()
 			if errorcode == 404 {
-				// If the ID is updated to blank, this tells Terraform the resource no longer exists (maybe it was destroyed out of band). Just like the destroy callback, the Read function should gracefully handle this case. https://www.terraform.io/docs/extend/writing-custom-providers.html
 				d.SetId("")
 				return nil
 			}
@@ -106,6 +116,11 @@ func resourceNetboxAsnRead(d *schema.ResourceData, m interface{}) error {
 	asn := res.GetPayload()
 	d.Set("asn", asn.Asn)
 	d.Set("rir_id", asn.Rir.ID)
+	if asn.Tenant != nil {
+		d.Set("tenant_id", asn.Tenant.ID)
+	} else {
+		d.Set("tenant_id", nil)
+	}
 	d.Set("description", asn.Description)
 	d.Set("comments", asn.Comments)
 	api.readTags(d, asn.Tags)
@@ -113,7 +128,7 @@ func resourceNetboxAsnRead(d *schema.ResourceData, m interface{}) error {
 	return nil
 }
 
-func resourceNetboxAsnUpdate(d *schema.ResourceData, m interface{}) error {
+func resourceNetboxAsnExtendedUpdate(d *schema.ResourceData, m interface{}) error {
 	api := m.(*providerState)
 
 	id, _ := strconv.ParseInt(d.Id(), 10, 64)
@@ -124,6 +139,11 @@ func resourceNetboxAsnUpdate(d *schema.ResourceData, m interface{}) error {
 
 	rir := int64(d.Get("rir_id").(int))
 	data.Rir = &rir
+
+	if tenantID, ok := d.GetOk("tenant_id"); ok {
+		tenantIDInt64 := int64(tenantID.(int))
+		data.Tenant = &tenantIDInt64
+	}
 
 	data.Description = d.Get("description").(string)
 	data.Comments = d.Get("comments").(string)
@@ -140,10 +160,10 @@ func resourceNetboxAsnUpdate(d *schema.ResourceData, m interface{}) error {
 		return err
 	}
 
-	return resourceNetboxAsnRead(d, m)
+	return resourceNetboxAsnExtendedRead(d, m)
 }
 
-func resourceNetboxAsnDelete(d *schema.ResourceData, m interface{}) error {
+func resourceNetboxAsnExtendedDelete(d *schema.ResourceData, m interface{}) error {
 	api := m.(*providerState)
 
 	id, _ := strconv.ParseInt(d.Id(), 10, 64)

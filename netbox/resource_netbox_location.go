@@ -112,6 +112,10 @@ func resourceNetboxLocationCreate(d *schema.ResourceData, m interface{}) error {
 
 	res, err := api.Dcim.DcimLocationsCreate(params, nil)
 	if err != nil {
+		if id, lookupErr := mechanizeLookupLocation(api, d); lookupErr == nil {
+			d.SetId(strconv.FormatInt(id, 10))
+			return resourceNetboxLocationRead(d, m)
+		}
 		return err
 	}
 

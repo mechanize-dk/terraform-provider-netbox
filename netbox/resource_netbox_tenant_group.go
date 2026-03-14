@@ -78,6 +78,10 @@ func resourceNetboxTenantGroupCreate(d *schema.ResourceData, m interface{}) erro
 
 	res, err := api.Tenancy.TenancyTenantGroupsCreate(params, nil)
 	if err != nil {
+		if id, lookupErr := mechanizeLookupTenantGroup(api, d); lookupErr == nil {
+			d.SetId(strconv.FormatInt(id, 10))
+			return resourceNetboxTenantGroupRead(d, m)
+		}
 		return err
 	}
 

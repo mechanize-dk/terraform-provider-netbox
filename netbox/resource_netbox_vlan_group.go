@@ -106,6 +106,10 @@ func resourceNetboxVlanGroupCreate(d *schema.ResourceData, m interface{}) error 
 	params := ipam.NewIpamVlanGroupsCreateParams().WithData(&data)
 	res, err := api.Ipam.IpamVlanGroupsCreate(params, nil)
 	if err != nil {
+		if id, lookupErr := mechanizeLookupVlanGroup(api, d); lookupErr == nil {
+			d.SetId(strconv.FormatInt(id, 10))
+			return resourceNetboxVlanGroupRead(d, m)
+		}
 		return err
 	}
 	d.SetId(strconv.FormatInt(res.GetPayload().ID, 10))

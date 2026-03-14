@@ -68,6 +68,10 @@ func resourceNetboxCircuitProviderCreate(d *schema.ResourceData, m interface{}) 
 
 	res, err := api.Circuits.CircuitsProvidersCreate(params, nil)
 	if err != nil {
+		if id, lookupErr := mechanizeLookupCircuitProvider(api, d); lookupErr == nil {
+			d.SetId(strconv.FormatInt(id, 10))
+			return resourceNetboxCircuitProviderRead(d, m)
+		}
 		return err
 	}
 

@@ -1,4 +1,4 @@
-module github.com/e-breuninger/terraform-provider-netbox
+module github.com/mechanize-dk/terraform-provider-netbox
 
 go 1.25.0
 

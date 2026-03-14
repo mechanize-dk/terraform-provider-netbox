@@ -78,7 +78,10 @@ func resourceNetboxTagCreate(d *schema.ResourceData, m interface{}) error {
 
 	res, err := api.Extras.ExtrasTagsCreate(params, nil)
 	if err != nil {
-		//return errors.New(getTextFromError(err))
+		if id, lookupErr := mechanizeLookupTag(api, d); lookupErr == nil {
+			d.SetId(strconv.FormatInt(id, 10))
+			return resourceNetboxTagRead(d, m)
+		}
 		return err
 	}
 

@@ -60,6 +60,10 @@ func resourceNetboxContactRoleCreate(d *schema.ResourceData, m interface{}) erro
 
 	res, err := api.Tenancy.TenancyContactRolesCreate(params, nil)
 	if err != nil {
+		if id, lookupErr := mechanizeLookupContactRole(api, d); lookupErr == nil {
+			d.SetId(strconv.FormatInt(id, 10))
+			return resourceNetboxContactRoleRead(d, m)
+		}
 		return err
 	}
 
