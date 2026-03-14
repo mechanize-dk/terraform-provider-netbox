@@ -1,4 +1,27 @@
-# terraform-provider-netbox
+# Terraform NetBox Idempotent Provider
+
+This is a fork of [e-breuninger/terraform-provider-netbox](https://github.com/e-breuninger/terraform-provider-netbox). The primary addition in this fork is idempotent resource creation: when Terraform attempts to create an object that already exists in NetBox (e.g. because it was created manually or by a previous run whose state was lost), the provider looks up the existing object by its identifying attributes and imports it into state — instead of failing with an error.
+
+It solves the following issues:
+
+- **Existing NetBox objects without Terraform state**
+  Would normally cause `terraform apply` to fail with a duplicate-name error. Now, these objects are detected, looked up by name, and silently adopted into state.
+
+- **State loss or drift**
+  If Terraform state is lost or deleted, re-applying will not attempt to create duplicates. Existing objects are matched and re-imported automatically.
+
+- **No import statements needed**
+  Since conflicts are resolved in code, explicit `terraform import` commands are no longer required to reconcile manually created objects with Terraform-managed infrastructure.
+
+The following resources are covered by this fix:
+
+`netbox_tag`, `netbox_tenant_group`, `netbox_tenant`, `netbox_contact_role`, `netbox_contact_group`, `netbox_region`, `netbox_site_group`, `netbox_site`, `netbox_location`, `netbox_platform`, `netbox_device_role`, `netbox_rack_role`, `netbox_manufacturer`, `netbox_device_type`, `netbox_cluster_type`, `netbox_cluster_group`, `netbox_cluster`, `netbox_rir`, `netbox_asn`, `netbox_vlan_group`, `netbox_vlan`, `netbox_ipam_role`, `netbox_route_target`, `netbox_vrf`, `netbox_circuit_type`, `netbox_circuit_provider`, `netbox_vpn_tunnel_group`
+
+In addition, the following new resource has been added:
+
+- **`netbox_asn_extended`** — extends `netbox_asn` with support for the `tenant_id` parameter, which is available in the NetBox API but missing from the upstream resource.
+
+## From the original Netbox Provider
 
 The Terraform Netbox provider is a plugin for Terraform that allows for the full lifecycle management of [Netbox](https://netboxlabs.com/docs/netbox/) resources.
 This provider is maintained by E. Breuninger.
