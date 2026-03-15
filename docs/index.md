@@ -27,7 +27,7 @@ The following resources are covered by this fix:
 In addition, the following new resource has been added:
 
 - **`netbox_asn_extended`** — extends `netbox_asn` with support for the `tenant_id` parameter, which is available in the NetBox API but missing from the upstream resource.
-
+- **`netbox_vlan_extended`** — extends `netbox_vlan` with support for the `tenant_id` parameter and cascade delete (on destroy, all prefixes referencing the VLAN are deleted first, then the VLAN itself).
 
 ## From the original Netbox Provider
 
