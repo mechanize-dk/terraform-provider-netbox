@@ -75,6 +75,9 @@ func (cfg *Config) Client() (*netboxclient.NetBoxAPI, error) {
 		}
 	}
 
+	// MECHANIZE FORK: wrap with retry transport to handle transient errors
+	trans = mechanizeRetryTransport{original: trans}
+
 	httpClient := &http.Client{
 		Transport: trans,
 		Timeout:   time.Second * time.Duration(cfg.RequestTimeout),
