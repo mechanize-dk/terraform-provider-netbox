@@ -1,3 +1,41 @@
+## 5.2.5 (unreleased)
+
+> mechanize-dk fork release.
+
+BUG FIXES
+
+* Idempotency: resource adoption now keys on the field NetBox actually enforces unique — `slug` (derived from `name`/`model` when unset), `slug`+scope/parent, or a natural key (`asn`, `vid`+group, `rd`) — instead of `name`. Previously, re-applying against a pre-existing object could **silently create a duplicate** (notably `netbox_vlan_group`, `netbox_cluster`, `netbox_vrf`, where NetBox permits duplicate names) or adopt the wrong object.
+
+ENHANCEMENTS
+
+* Idempotency reworked to **look-up-first**: the existing object is looked up and adopted *before* Create runs, rather than only after a Create error. This makes adoption work even for endpoints where NetBox allows duplicates (where no error is raised to trigger the old behaviour).
+* All idempotency logic is consolidated in `netbox/mechanize_idempotency.go` and applied via a single wrapper call in `provider.go`; the upstream `resource_*.go` files no longer carry fork code, easing upstream rebasing.
+* Added `tests/idempotency/probe_uniqueness.py` to empirically determine each endpoint's uniqueness key against a live NetBox, and a duplicate-count assertion to `tests/idempotency/test_idempotency.py`.
+
+## 5.2.4 (July 9th, 2026)
+
+> mechanize-dk fork release.
+
+BUG FIXES
+
+* Retry transport: retry transient gateway responses (HTTP 429/502/503/504) *before* they reach the go-openapi client, fixing spurious `(*interface {}) is not supported by the TextConsumer` errors when NetBox is under load. Request bodies are replayed on each retry.
+
+## 5.2.3 (March 18th, 2026)
+
+> mechanize-dk fork release.
+
+ENHANCEMENTS
+
+* Added an HTTP retry transport that transparently retries transient NetBox API transport errors (connection reset/refused, EOF).
+
+## 5.2.2 (March 15th, 2026)
+
+> mechanize-dk fork release.
+
+ENHANCEMENTS
+
+* **New Resource:** `netbox_vlan_extended` — extends `netbox_vlan` with `tenant_id` and cascade-deletes any prefixes referencing the VLAN on destroy.
+
 ## 5.2.1 (March 12th, 2026)
 
 ENHANCEMENTS

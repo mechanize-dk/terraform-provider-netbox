@@ -1,17 +1,21 @@
 # Terraform NetBox Idempotent Provider
 
-This is a fork of [e-breuninger/terraform-provider-netbox](https://github.com/e-breuninger/terraform-provider-netbox). The primary addition in this fork is idempotent resource creation: when Terraform attempts to create an object that already exists in NetBox (e.g. because it was created manually or by a previous run whose state was lost), the provider looks up the existing object by its identifying attributes and imports it into state — instead of failing with an error.
+This is a fork of [e-breuninger/terraform-provider-netbox](https://github.com/e-breuninger/terraform-provider-netbox). The primary addition in this fork is idempotent resource creation: when Terraform attempts to create an object that already exists in NetBox (e.g. because it was created manually or by a previous run whose state was lost), the provider adopts the existing object into state instead of creating a duplicate or failing.
+
+Adoption is **look-up-first**: before a resource is created, the provider looks it up by the key NetBox actually enforces unique — the `slug` (derived from `name`/`model` when you don't set it), a scoped `slug` (with its site/parent/scope), or a natural key such as `asn`, `vid`+group, or `rd`. If exactly one matching object exists, it is adopted (its ID is imported and its state refreshed); otherwise a normal create proceeds. Keying on the enforced-unique field (rather than `name`, which NetBox does not always treat as unique) means adoption works even for endpoints such as `netbox_vlan_group` where NetBox permits duplicate names.
 
 It solves the following issues:
 
 - **Existing NetBox objects without Terraform state**
-  Would normally cause `terraform apply` to fail with a duplicate-name error. Now, these objects are detected, looked up by name, and silently adopted into state.
+  Would normally cause `terraform apply` to create a duplicate or fail. Now these objects are detected by their unique key and adopted into state.
 
 - **State loss or drift**
-  If Terraform state is lost or deleted, re-applying will not attempt to create duplicates. Existing objects are matched and re-imported automatically.
+  If Terraform state is lost or deleted, re-applying will not create duplicates. Existing objects are matched and re-adopted automatically.
 
 - **No import statements needed**
   Since conflicts are resolved in code, explicit `terraform import` commands are no longer required to reconcile manually created objects with Terraform-managed infrastructure.
+
+All fork logic lives in `netbox/mechanize_idempotency.go` and is applied via a single wrapper in the provider, so the upstream resource files stay unmodified and easy to rebase.
 
 The following resources are covered by this fix:
 
