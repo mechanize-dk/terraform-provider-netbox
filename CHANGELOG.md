@@ -1,4 +1,4 @@
-## 5.2.5 (unreleased)
+## 5.2.5 (September 9th, 2026)
 
 > mechanize-dk fork release.
 
