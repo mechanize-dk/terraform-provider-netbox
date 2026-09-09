@@ -75,22 +75,35 @@ def _banner(msg):  print(f"\n{BOLD}{'='*60}\n{msg}\n{'='*60}{RESET}")
 class NetBoxClient:
     """Minimal NetBox REST API client using basic auth to acquire a token."""
 
-    def __init__(self, base_url: str, username: str, password: str):
+    def __init__(self, base_url: str, username: Optional[str] = None,
+                 password: Optional[str] = None, token: Optional[str] = None):
         self.base_url = base_url.rstrip("/")
         self._session = requests.Session()
-        self._session.auth = (username, password)
+        if not token:
+            self._session.auth = (username, password)
         self._session.verify = False  # allow self-signed certificates
         self._session.headers.update({
             "Content-Type": "application/json",
             "Accept":       "application/json",
+            # Some deployments sit behind Cloudflare, which bans the default
+            # python-requests user-agent (error 1010).
+            "User-Agent":   "netbox-idempotency-tests/1.0",
         })
-        self.token:    Optional[str] = None
+        self.token:    Optional[str] = token
         self._token_id: Optional[int] = None
+        self._token_provided = bool(token)
+        if token:
+            self._use_token()
 
     # ── auth ──────────────────────────────────────────────────────────────────
 
     def connect(self) -> str:
-        """Provision (or retrieve) an API token and return it."""
+        """Provision (or retrieve) an API token and return it.
+
+        If a token was supplied directly, use it as-is.
+        """
+        if self._token_provided:
+            return self.token
         username, password = self._session.auth
 
         # Try the newer "provision" endpoint (credentials go in body)
@@ -127,11 +140,34 @@ class NetBoxClient:
         self._session.headers["Authorization"] = f"Token {self.token}"
 
     def disconnect(self):
-        """Delete the token that was created by connect() (if any)."""
-        if self._token_id:
+        """Delete the token that was created by connect() (if any).
+
+        A token supplied directly by the caller is left untouched.
+        """
+        if self._token_id and not self._token_provided:
             self._session.delete(
                 f"{self.base_url}/api/users/tokens/{self._token_id}/"
             )
+
+    def count(self, path: str, params: Dict) -> int:
+        """Return how many objects at `path` match the given query params."""
+        url = f"{self.base_url}/api/{path.strip('/')}/"
+        r = self._session.get(url, params=params)
+        if not r.ok:
+            raise RuntimeError(f"GET {url} {params} → {r.status_code}\n{r.text[:300]}")
+        return r.json().get("count", 0)
+
+    def delete_matching(self, path: str, params: Dict) -> int:
+        """Delete every object at `path` matching params. Returns count deleted."""
+        url = f"{self.base_url}/api/{path.strip('/')}/"
+        r = self._session.get(url, params=params)
+        if not r.ok:
+            return 0
+        deleted = 0
+        for obj in r.json().get("results", []):
+            self.delete(path, obj["id"])
+            deleted += 1
+        return deleted
 
     # ── CRUD helpers ──────────────────────────────────────────────────────────
 
@@ -856,6 +892,22 @@ resource "netbox_vpn_tunnel_group" "test" {{
 ]
 
 
+# ─── Identifying query ──────────────────────────────────────────────────────
+
+def identifying_query(api_payload: Dict) -> Dict:
+    """Build a NetBox list filter that isolates exactly the object(s) a test
+    created, so we can count them and detect duplicates.
+
+    Every test embeds a unique run-scoped uid in its name/slug (or a run-unique
+    numeric asn/vid), so filtering on the natural key is unambiguous within a
+    run. Priority mirrors NetBox's real uniqueness keys.
+    """
+    for key in ("slug", "asn", "model", "name", "vid"):
+        if key in api_payload:
+            return {key: api_payload[key]}
+    raise RuntimeError(f"no identifying field in payload: {list(api_payload)}")
+
+
 # ─── Single test runner ───────────────────────────────────────────────────────
 
 class TestResult:
@@ -968,6 +1020,28 @@ def run_test(
             return result
         print(_ok("apply on pre-existing object (adopted into state)"))
 
+        # ── Duplicate check: adoption must NOT have created a second object ──
+        # This is the assertion that distinguishes real idempotency from a
+        # silent duplicate. For endpoints where NetBox allows duplicate names,
+        # a broken lookup makes `apply` succeed while creating a second object.
+        query = identifying_query(api_payload)
+        try:
+            n = nb.count(tc["api_path"], query)
+        except RuntimeError as e:
+            result.error = f"duplicate-count query failed: {e}"
+            nb.delete_matching(tc["api_path"], query)
+            return result
+        if n != 1:
+            result.error = (
+                f"NOT IDEMPOTENT: expected exactly 1 object matching {query} "
+                f"after adoption, found {n} (a duplicate was created)."
+            )
+            print(_fail(result.error))
+            _try_destroy(tf, work_dir, verbose)
+            nb.delete_matching(tc["api_path"], query)  # remove any leftovers
+            return result
+        print(_ok(f"no duplicate created (exactly 1 object matches {query})"))
+
         write_tf(work_dir, provider, update_hcl)
         ok_idem_upd, out_idem_upd = tf.apply(work_dir)
         if verbose: print(out_idem_upd)
@@ -1029,10 +1103,14 @@ def parse_args() -> argparse.Namespace:
     )
     p.add_argument("--netbox-url",      required=True,
                    help="NetBox base URL, e.g. http://localhost:8000")
-    p.add_argument("--netbox-username", required=True,
-                   help="NetBox admin username")
-    p.add_argument("--netbox-password", required=True,
-                   help="NetBox admin password")
+    p.add_argument("--netbox-username", default=None,
+                   help="NetBox admin username (or use --netbox-token)")
+    p.add_argument("--netbox-password", default=None,
+                   help="NetBox admin password (or use --netbox-token)")
+    p.add_argument("--netbox-token",    default=os.environ.get("NETBOX_TOKEN"),
+                   help="NetBox API token (alternative to username/password; "
+                        "defaults to $NETBOX_TOKEN). A token passed here is used "
+                        "as-is and never deleted.")
     p.add_argument("--terraform-path",  required=True,
                    help="Path to the Terraform CLI binary")
     p.add_argument("--provider-dir",    default=None,
@@ -1062,7 +1140,12 @@ def main():
     print(_info(f"NetBox URL         : {args.netbox_url}"))
 
     # ── Connect to NetBox ─────────────────────────────────────────────────────
-    nb = NetBoxClient(args.netbox_url, args.netbox_username, args.netbox_password)
+    if not args.netbox_token and not (args.netbox_username and args.netbox_password):
+        print("ERROR: provide either --netbox-token (or $NETBOX_TOKEN) or "
+              "both --netbox-username and --netbox-password.")
+        sys.exit(1)
+    nb = NetBoxClient(args.netbox_url, args.netbox_username, args.netbox_password,
+                      token=args.netbox_token)
     try:
         token = nb.connect()
     except Exception as e:

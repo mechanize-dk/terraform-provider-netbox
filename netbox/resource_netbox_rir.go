@@ -70,10 +70,6 @@ func resourceNetboxRirCreate(d *schema.ResourceData, m interface{}) error {
 	params := ipam.NewIpamRirsCreateParams().WithData(&data)
 	res, err := api.Ipam.IpamRirsCreate(params, nil)
 	if err != nil {
-		if id, lookupErr := mechanizeLookupRir(api, d); lookupErr == nil {
-			d.SetId(strconv.FormatInt(id, 10))
-			return resourceNetboxRirRead(d, m)
-		}
 		return err
 	}
 	d.SetId(strconv.FormatInt(res.GetPayload().ID, 10))

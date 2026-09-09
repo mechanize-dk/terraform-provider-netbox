@@ -72,10 +72,6 @@ func resourceNetboxAsnCreate(d *schema.ResourceData, m interface{}) error {
 
 	res, err := api.Ipam.IpamAsnsCreate(params, nil)
 	if err != nil {
-		if id, lookupErr := mechanizeLookupAsn(api, d); lookupErr == nil {
-			d.SetId(strconv.FormatInt(id, 10))
-			return resourceNetboxAsnRead(d, m)
-		}
 		return err
 	}
 

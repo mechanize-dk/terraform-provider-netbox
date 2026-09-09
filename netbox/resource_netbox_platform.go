@@ -71,10 +71,6 @@ func resourceNetboxPlatformCreate(d *schema.ResourceData, m interface{}) error {
 
 	res, err := api.Dcim.DcimPlatformsCreate(params, nil)
 	if err != nil {
-		if id, lookupErr := mechanizeLookupPlatform(api, d); lookupErr == nil {
-			d.SetId(strconv.FormatInt(id, 10))
-			return resourceNetboxPlatformRead(d, m)
-		}
 		return err
 	}
 

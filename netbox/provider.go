@@ -290,6 +290,10 @@ func Provider() *schema.Provider {
 		}
 	}
 
+	// MECHANIZE FORK: wrap resource Create with look-up-first idempotency.
+	// All fork logic lives in mechanize_idempotency.go; this is the only hook.
+	mechanizeAddIdempotency(provider.ResourcesMap)
+
 	return provider
 }
 

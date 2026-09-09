@@ -60,10 +60,6 @@ func resourceNetboxManufacturerCreate(d *schema.ResourceData, m interface{}) err
 
 	res, err := api.Dcim.DcimManufacturersCreate(params, nil)
 	if err != nil {
-		if id, lookupErr := mechanizeLookupManufacturer(api, d); lookupErr == nil {
-			d.SetId(strconv.FormatInt(id, 10))
-			return resourceNetboxManufacturerRead(d, m)
-		}
 		return err
 	}
 
