@@ -1,7 +1,6 @@
 package netbox
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/fbreckle/go-netbox/netbox/client/ipam"
@@ -12,6 +11,7 @@ import (
 )
 
 func dataSourceNetboxIPAddresses() *schema.Resource {
+	customFieldsFilterSchema := *customFieldsSchema
 	return &schema.Resource{
 		Read:        dataSourceNetboxIPAddressesRead,
 		Description: `:meta:subcategory:IP Address Management (IPAM):`,
@@ -38,6 +38,7 @@ func dataSourceNetboxIPAddresses() *schema.Resource {
 				ValidateDiagFunc: validation.ToDiagFunc(validation.IntAtLeast(1)),
 				Default:          0,
 			},
+			customFieldsKey: &customFieldsFilterSchema,
 			"ip_addresses": {
 				Type:     schema.TypeList,
 				Computed: true,
@@ -139,6 +140,7 @@ func dataSourceNetboxIPAddressesRead(d *schema.ResourceData, m interface{}) erro
 	api := m.(*providerState)
 
 	params := ipam.NewIpamIPAddressesListParams()
+	var opts []ipam.ClientOption
 
 	// Get user limit
 	var userLimit int64 = 0
@@ -189,13 +191,17 @@ func dataSourceNetboxIPAddressesRead(d *schema.ResourceData, m interface{}) erro
 	paginationHelper := NewPaginationHelper(userLimit)
 	var allIPAddresses []*models.IPAddress
 
+	if cfm, ok := d.Get(customFieldsKey).(map[string]interface{}); ok {
+		opts = append(opts, WithCustomFieldParamsOption(cfm))
+	}
+
 	pageSize := paginationHelper.GetPageSize()
 	for {
 		currentOffset := paginationHelper.CurrentOffset()
 		params.Limit = &pageSize
 		params.Offset = &currentOffset
 
-		res, err := api.Ipam.IpamIPAddressesList(params, nil)
+		res, err := api.Ipam.IpamIPAddressesList(params, nil, opts...)
 		if err != nil {
 			return fmt.Errorf("failed to fetch IP addresses at offset %d: %w", currentOffset, err)
 		}
@@ -218,10 +224,10 @@ func dataSourceNetboxIPAddressesRead(d *schema.ResourceData, m interface{}) erro
 	trimmedCount := paginationHelper.TrimToLimit(len(allIPAddresses))
 	filteredIPAddresses := allIPAddresses[:trimmedCount]
 
-	if len(filteredIPAddresses) == 0 {
-		return errors.New("no result")
-	}
-
+	// No error on zero matches: a caller filtering by e.g. interface_id needs to
+	// tell "nothing has this IP yet" apart from a real failure, which erroring
+	// here made impossible - every filtered read had to assume at least one
+	// match exists.
 	var s []map[string]interface{}
 	for _, v := range filteredIPAddresses {
 		var mapping = make(map[string]interface{})

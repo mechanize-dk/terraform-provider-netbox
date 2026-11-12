@@ -52,7 +52,16 @@ func resourceNetboxDeviceType() *schema.Resource {
 				Type:     schema.TypeString,
 				Optional: true,
 			},
-			tagsKey: tagsSchema,
+			"description": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+			"comments": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+			tagsKey:         tagsSchema,
+			customFieldsKey: customFieldsSchema,
 		},
 		Importer: &schema.ResourceImporter{
 			StateContext: schema.ImportStatePassthroughContext,
@@ -97,10 +106,19 @@ func resourceNetboxDeviceTypeCreate(d *schema.ResourceData, m interface{}) error
 		data.SubdeviceRole = subdeviceRoleValue.(string)
 	}
 
+	data.Description = d.Get("description").(string)
+
+	data.Comments = d.Get("comments").(string)
+
 	var err error
 	data.Tags, err = getNestedTagListFromResourceDataSet(api, d.Get(tagsAllKey))
 	if err != nil {
 		return err
+	}
+
+	ct, ok := d.GetOk(customFieldsKey)
+	if ok {
+		data.CustomFields = ct
 	}
 
 	params := dcim.NewDcimDeviceTypesCreateParams().WithData(&data)
@@ -146,7 +164,14 @@ func resourceNetboxDeviceTypeRead(d *schema.ResourceData, m interface{}) error {
 	} else {
 		d.Set("subdevice_role", "")
 	}
+	d.Set("description", deviceType.Description)
+	d.Set("comments", deviceType.Comments)
 	api.readTags(d, deviceType.Tags)
+
+	cf := getCustomFields(deviceType.CustomFields)
+	if cf != nil {
+		d.Set(customFieldsKey, cf)
+	}
 
 	return nil
 }
@@ -188,10 +213,19 @@ func resourceNetboxDeviceTypeUpdate(d *schema.ResourceData, m interface{}) error
 		data.SubdeviceRole = subdeviceRoleValue.(string)
 	}
 
+	data.Description = d.Get("description").(string)
+
+	data.Comments = d.Get("comments").(string)
+
 	var err error
 	data.Tags, err = getNestedTagListFromResourceDataSet(api, d.Get(tagsAllKey))
 	if err != nil {
 		return err
+	}
+
+	ct, ok := d.GetOk(customFieldsKey)
+	if ok {
+		data.CustomFields = ct
 	}
 
 	params := dcim.NewDcimDeviceTypesPartialUpdateParams().WithID(id).WithData(&data)

@@ -32,6 +32,8 @@ resource "netbox_device_type" "test" {
   manufacturer_id = netbox_manufacturer.test.id
   is_full_depth = true
   subdevice_role = "parent"
+  description = "test description"
+  comments = "test comments"
 }`, testName, randomSlug),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("netbox_device_type.test", "model", testName),
@@ -41,6 +43,8 @@ resource "netbox_device_type" "test" {
 					resource.TestCheckResourceAttrPair("netbox_device_type.test", "manufacturer_id", "netbox_manufacturer.test", "id"),
 					resource.TestCheckResourceAttr("netbox_device_type.test", "is_full_depth", "true"),
 					resource.TestCheckResourceAttr("netbox_device_type.test", "subdevice_role", "parent"),
+					resource.TestCheckResourceAttr("netbox_device_type.test", "description", "test description"),
+					resource.TestCheckResourceAttr("netbox_device_type.test", "comments", "test comments"),
 				),
 			},
 			{
@@ -57,6 +61,8 @@ resource "netbox_device_type" "test" {
   manufacturer_id = netbox_manufacturer.test.id
   is_full_depth = false
   subdevice_role = "child"
+  description = "test description changed"
+  comments = "test comments changed"
 }`, testName, randomSlug),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("netbox_device_type.test", "model", testName),
@@ -66,6 +72,46 @@ resource "netbox_device_type" "test" {
 					resource.TestCheckResourceAttrPair("netbox_device_type.test", "manufacturer_id", "netbox_manufacturer.test", "id"),
 					resource.TestCheckResourceAttr("netbox_device_type.test", "is_full_depth", "false"),
 					resource.TestCheckResourceAttr("netbox_device_type.test", "subdevice_role", "child"),
+					resource.TestCheckResourceAttr("netbox_device_type.test", "description", "test description changed"),
+					resource.TestCheckResourceAttr("netbox_device_type.test", "comments", "test comments changed"),
+				),
+			},
+			{
+				ResourceName:      "netbox_device_type.test",
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+		},
+	})
+}
+
+func TestAccNetboxDeviceType_customFields(t *testing.T) {
+	testSlug := "device_type_cf"
+	testName := testAccGetTestName(testSlug)
+	testField := strings.ReplaceAll(testAccGetTestName(testSlug), "-", "_")
+	resource.Test(t, resource.TestCase{
+		PreCheck:  func() { testAccPreCheck(t) },
+		Providers: testAccProviders,
+		Steps: []resource.TestStep{
+			{
+				Config: fmt.Sprintf(`
+resource "netbox_manufacturer" "test" {
+  name = "%[1]s"
+}
+
+resource "netbox_custom_field" "test" {
+  name          = "%[2]s"
+  type          = "text"
+  content_types = ["dcim.devicetype"]
+}
+
+resource "netbox_device_type" "test" {
+  model           = "%[1]s"
+  manufacturer_id = netbox_manufacturer.test.id
+  custom_fields   = {"${netbox_custom_field.test.name}" = "81"}
+}`, testName, testField),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr("netbox_device_type.test", "custom_fields."+testField, "81"),
 				),
 			},
 			{

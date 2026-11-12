@@ -69,6 +69,12 @@ func TestAccNetboxVirtualMachinesDataSource_basic(t *testing.T) {
 					resource.TestCheckResourceAttrPair("data.netbox_virtual_machines.test", "vms.0.cluster_id", "netbox_cluster.test", "id"),
 				),
 			},
+			{
+				Config: dependencies + testAccNetboxVirtualMachineDataSourceFilterEmpty(testName),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr("data.netbox_virtual_machines.test", "vms.#", "0"),
+				),
+			},
 		},
 	})
 }
@@ -106,7 +112,7 @@ func TestAccNetboxVirtualMachinesDataSource_status(t *testing.T) {
 				Config: dependencies,
 			},
 			{
-				Config: dependencies + testAccNetboxVirtualMachineDataSourceStatusActive + testAccNetboxVirtualMachineDataSourceStatusDecommissioning,
+				Config: dependencies + testAccNetboxVirtualMachineDataSourceStatusActive() + testAccNetboxVirtualMachineDataSourceStatusDecommissioning(),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("data.netbox_virtual_machines.test_active", "vms.#", "1"),
 					resource.TestCheckResourceAttr("data.netbox_virtual_machines.test_decommissioning", "vms.#", "1"),
@@ -232,6 +238,20 @@ data "netbox_virtual_machines" "test" {
   name_regex = "test.*_regex"
 }`
 
+func testAccNetboxVirtualMachineDataSourceFilterEmpty(testName string) string {
+	return fmt.Sprintf(`
+data "netbox_virtual_machines" "test" {
+  filter {
+    name  = "cluster_id"
+    value = netbox_cluster.test.id
+  }
+  filter {
+    name  = "name"
+    value = "%[1]s_does_not_exist"
+  }
+}`, testName)
+}
+
 const testAccNetboxVirtualMachineDataSourceLimit = `
 data "netbox_virtual_machines" "test" {
   limit = 1
@@ -275,19 +295,83 @@ data "netbox_virtual_machines" "tag-ab" {
 }`, testName)
 }
 
-const testAccNetboxVirtualMachineDataSourceStatusActive = `
+func testAccNetboxVirtualMachineDataSourceStatusActive() string {
+	return `
 data "netbox_virtual_machines" "test_active" {
   filter {
     name  = "status"
     value = "active"
   }
+  filter {
+    name  = "cluster_id"
+    value = netbox_cluster.test.id
+  }
 }`
+}
 
-const testAccNetboxVirtualMachineDataSourceStatusDecommissioning = `
+func testAccNetboxVirtualMachineDataSourceStatusDecommissioning() string {
+	return `
 data "netbox_virtual_machines" "test_decommissioning" {
   filter {
     name  = "status"
     value = "decommissioning"
+  }
+  filter {
+    name  = "cluster_id"
+    value = netbox_cluster.test.id
+  }
+}`
+}
+
+func TestAccNetboxVirtualMachinesDataSource_platform(t *testing.T) {
+	testSlug := "vm_ds_platform"
+	testName := testAccGetTestName(testSlug)
+	dependencies := testAccNetboxVirtualMachineDataSourceDependenciesWithPlatform(testName)
+	resource.Test(t, resource.TestCase{
+		Providers: testAccProviders,
+		Steps: []resource.TestStep{
+			{
+				Config: dependencies,
+			},
+			{
+				Config: dependencies + testAccNetboxVirtualMachineDataSourceFilterPlatform,
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr("data.netbox_virtual_machines.test", "vms.#", "1"),
+					resource.TestCheckResourceAttrPair("data.netbox_virtual_machines.test", "vms.0.name", "netbox_virtual_machine.test0", "name"),
+					resource.TestCheckResourceAttrPair("data.netbox_virtual_machines.test", "vms.0.platform_id", "netbox_platform.test", "id"),
+				),
+			},
+		},
+	})
+}
+
+func testAccNetboxVirtualMachineDataSourceDependenciesWithPlatform(testName string) string {
+	return testAccNetboxVirtualMachineFullDependencies(testName) + fmt.Sprintf(`
+resource "netbox_platform" "test2" {
+  name = "%[1]s_2"
+}
+
+resource "netbox_virtual_machine" "test0" {
+  name        = "%[1]s_0"
+  cluster_id  = netbox_cluster.test.id
+  site_id     = netbox_site.test.id
+  platform_id = netbox_platform.test.id
+}
+
+resource "netbox_virtual_machine" "test1" {
+  name        = "%[1]s_1"
+  cluster_id  = netbox_cluster.test.id
+  site_id     = netbox_site.test.id
+  platform_id = netbox_platform.test2.id
+}
+`, testName)
+}
+
+const testAccNetboxVirtualMachineDataSourceFilterPlatform = `
+data "netbox_virtual_machines" "test" {
+  filter {
+    name  = "platform"
+    value = netbox_platform.test.slug
   }
 }`
 
