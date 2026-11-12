@@ -1,3 +1,17 @@
+## 5.7.0 (Unreleased)
+
+> mechanize-dk fork release.
+
+CHANGES
+
+* Synced with upstream [v5.7.0](https://github.com/e-breuninger/terraform-provider-netbox/releases/tag/v5.7.0) (previously based on upstream 5.2.1). See the upstream entries 5.3.0 to 5.7.0 below. This adds support for NetBox 4.5 and 4.6 (up to 4.6.5) and for v2 API tokens.
+* All fork changes are carried over unchanged: retry transport, look-up-first idempotency, `netbox_asn_extended`, `netbox_vlan_extended` and the `netbox_route_target` tenant fix.
+
+UPGRADE NOTES
+
+* resource/netbox_vlan: Now manages `custom_fields` (upstream 5.7.0). VLANs with custom fields set outside Terraform will show up as changes in the plan. Add `custom_fields` to `ignore_changes` if they are managed elsewhere.
+* provider: `request_timeout` now applies to all operations (upstream 5.7.0).
+
 ## 5.2.5 (September 9th, 2026)
 
 > mechanize-dk fork release.
@@ -35,6 +49,100 @@ ENHANCEMENTS
 ENHANCEMENTS
 
 * **New Resource:** `netbox_vlan_extended` — extends `netbox_vlan` with `tenant_id` and cascade-deletes any prefixes referencing the VLAN on destroy.
+
+# 5.7.0 (July 15th, 2026)
+
+ENHANCEMENTS
+
+* **New Resource:** `netbox_module_bay_template` ([#926](https://github.com/e-breuninger/terraform-provider-netbox/pull/926) by [@Topherr](https://github.com/Topherr))
+* **New Resource:** `netbox_power_port_template` ([#927](https://github.com/e-breuninger/terraform-provider-netbox/pull/927) by [@Topherr](https://github.com/Topherr))
+* **New Resource:** `netbox_power_outlet_template` ([#927](https://github.com/e-breuninger/terraform-provider-netbox/pull/927) by [@Topherr](https://github.com/Topherr))
+* **New Resource:** `netbox_device_oob_ip` ([#936](https://github.com/e-breuninger/terraform-provider-netbox/pull/936) by [@Topherr](https://github.com/Topherr))
+* **New Data Source:** `netbox_device_power_outlets` ([#935](https://github.com/e-breuninger/terraform-provider-netbox/pull/935) by [@FlxPeters](https://github.com/FlxPeters))
+* **New Data Source:** `netbox_rack_type` ([#933](https://github.com/e-breuninger/terraform-provider-netbox/pull/933) by [@FlxPeters](https://github.com/FlxPeters))
+* provider: Properly apply `request_timeout` to all operations ([#913](https://github.com/e-breuninger/terraform-provider-netbox/pull/913) by [@telekom-theinze](https://github.com/telekom-theinze))
+* provider: Surface a clear error when the Netbox version check gets a non-JSON response ([#929](https://github.com/e-breuninger/terraform-provider-netbox/pull/929) by [@fabiomatavelli](https://github.com/fabiomatavelli))
+* resource/netbox_custom_field: Properly handle `default` values ([#914](https://github.com/e-breuninger/terraform-provider-netbox/pull/914) by [@anherrera](https://github.com/anherrera))
+* resource/netbox_custom_field_choice_set: Correctly persist and read many attributes ([#914](https://github.com/e-breuninger/terraform-provider-netbox/pull/914) by [@anherrera](https://github.com/anherrera))
+* resource/netbox_vlan: Add `custom_field` attribute ([#924](https://github.com/e-breuninger/terraform-provider-netbox/pull/924) by [@robinvalk](https://github.com/robinvalk))
+* data-source/netbox_vlan: Include `custom_field` attribute in output ([#924](https://github.com/e-breuninger/terraform-provider-netbox/pull/924) by [@robinvalk](https://github.com/robinvalk))
+* data-source/netbox_vlans: Include `custom_field` attribute in output ([#924](https://github.com/e-breuninger/terraform-provider-netbox/pull/924) by [@robinvalk](https://github.com/robinvalk))
+* resource/netbox_rack: Add `rack_type_id` attribute ([#937](https://github.com/e-breuninger/terraform-provider-netbox/pull/937) by [@FlxPeters](https://github.com/FlxPeters))
+* resource/netbox_device_interface: Add `module_id` attribute ([#944](https://github.com/e-breuninger/terraform-provider-netbox/pull/944) by [@FlxPeters](https://github.com/FlxPeters))
+
+## 5.6.2 (June 19th, 2026)
+
+This provider version adds support for NetBox versions up to 4.6.3
+
+## 5.6.1 (June 16th, 2026)
+
+This provider version adds support for NetBox versions up to 4.6.1 ([#849](https://github.com/e-breuninger/terraform-provider-netbox/pull/849) by [@mcanevet](https://github.com/mcanevet))
+
+CHANGES
+
+* resource/netbox_device_front_port: Make `rear_port_position` attribute optional ([#849](https://github.com/e-breuninger/terraform-provider-netbox/pull/849) by [@mcanevet](https://github.com/mcanevet))
+* resource/netbox_user: Deprecate `staff` attribute ([#849](https://github.com/e-breuninger/terraform-provider-netbox/pull/849) by [@mcanevet](https://github.com/mcanevet))
+
+## 5.6.0 (June 16th, 2026)
+
+ENHANCEMENTS
+
+* **New Data Source:** `netbox_vpn_tunnel` ([#888](https://github.com/e-breuninger/terraform-provider-netbox/pull/888) by [@rfranks-securenet](https://github.com/rfranks-securenet))
+* **New Data Source:** `netbox_vpn_tunnel_group` ([#888](https://github.com/e-breuninger/terraform-provider-netbox/pull/888) by [@rfranks-securenet](https://github.com/rfranks-securenet))
+* **New Data Source:** `netbox_vpn_tunnel_terminations` ([#888](https://github.com/e-breuninger/terraform-provider-netbox/pull/888) by [@rfranks-securenet](https://github.com/rfranks-securenet))
+* resource/netbox_ip_range: Add to `mark_populated` and `mark_utilized` attributes ([#902](https://github.com/e-breuninger/terraform-provider-netbox/pull/902) by [@bqc0n](https://github.com/bqc0n))
+
+## 5.5.0 (June 12th, 2026)
+
+ENHANCEMENTS
+
+* **New Resource:** `netbox_fhrp_group` ([#887](https://github.com/e-breuninger/terraform-provider-netbox/pull/887) by [@rfranks-securenet](https://github.com/rfranks-securenet))
+* **New Resource:** `netbox_fhrp_group_assignment` ([#887](https://github.com/e-breuninger/terraform-provider-netbox/pull/887) by [@rfranks-securenet](https://github.com/rfranks-securenet))
+* **New Data Source:** `netbox_fhrp_group` ([#887](https://github.com/e-breuninger/terraform-provider-netbox/pull/887) by [@rfranks-securenet](https://github.com/rfranks-securenet))
+* **New Data Source:** `netbox_manufacturers` ([#893](https://github.com/e-breuninger/terraform-provider-netbox/pull/893) by [@StopMotionCuber](https://github.com/StopMotionCuber))
+* data-source/netbox_virtual_machines: Allow filtering by `platform` and `platform_id` ([#892](https://github.com/e-breuninger/terraform-provider-netbox/pull/892) by [@sjurtf](https://github.com/sjurtf))
+* data-source/netbox_virtual_disk: Allow filtering by `virtual_machine_id` and add `ordering` attribute ([#897](https://github.com/e-breuninger/terraform-provider-netbox/pull/897) by [@sjurtf](https://github.com/sjurtf))
+* resource/netbox_device_type: Add `custom_fields` attribute ([#884](https://github.com/e-breuninger/terraform-provider-netbox/pull/884) by [@kyleprice](https://github.com/kyleprice))
+* resource/netbox_contact: Add to `group_ids` attribute ([#896](https://github.com/e-breuninger/terraform-provider-netbox/pull/896) by [@somniumV](https://github.com/somniumV))
+* data-source/netbox_device_interfaces: Allow filtering by `lag_id` and include `lag_device_interface_id` in responses ([#903](https://github.com/e-breuninger/terraform-provider-netbox/pull/903) by [@mcanevet](https://github.com/mcanevet))
+
+BUG FIXES
+* data-source/netbox_devices: Add `nil` guards for device type sub attributes ([#898](https://github.com/e-breuninger/terraform-provider-netbox/pull/898) by [@SAY-5](https://github.com/SAY-5))
+
+## 5.4.0 (May 29th, 2026)
+
+ENHANCEMENTS
+
+* **New Resource:** `netbox_virtual_machine_interface_primary_mac_address` ([#879](https://github.com/e-breuninger/terraform-provider-netbox/pull/879) by [@somniumV](https://github.com/somniumV))
+* **New Resource:** `netbox_device_interface_primary_mac_address` ([#879](https://github.com/e-breuninger/terraform-provider-netbox/pull/879) by [@somniumV](https://github.com/somniumV))
+* resource/netbox_device_interface: Add `vrf_id` attribute ([#894](https://github.com/e-breuninger/terraform-provider-netbox/pull/894) by [@mcanevet](https://github.com/mcanevet))
+
+BUG FIXES
+
+* resource/netbox_ip_address: ignore DNS name case drift ([#863](https://github.com/e-breuninger/terraform-provider-netbox/pull/863) by [@MrKeiKun](https://github.com/MrKeiKun))
+* resource/netbox_available_ip_address: ignore DNS name case drift ([#863](https://github.com/e-breuninger/terraform-provider-netbox/pull/863) by [@MrKeiKun](https://github.com/MrKeiKun))
+* resource/custom_field: add `related_object_type` attribute and allow `multiobject` and `object` as types ([#872](https://github.com/e-breuninger/terraform-provider-netbox/pull/872) by [@etonnerre](https://github.com/etonnerre))
+
+## 5.3.0 (April 9th, 2026)
+
+ENHANCEMENTS
+
+* provider: Now supports using [v2 API tokens](https://netboxlabs.com/docs/netbox/integrations/rest-api/#authenticating-to-the-api) ([#862](https://github.com/e-breuninger/terraform-provider-netbox/pull/862) by [@MrKeiKun](https://github.com/MrKeiKun))
+  Note that this is a NetBox v4.5 feature. This provider does not officially support v4.5 versions yet.
+* **New Resource:** `netbox_wireless_lan` ([#859](https://github.com/e-breuninger/terraform-provider-netbox/pull/859) by [@JonasKop](https://github.com/JonasKop))
+* **New Resource:** `netbox_wireless_lan_group` ([#859](https://github.com/e-breuninger/terraform-provider-netbox/pull/859) by [@JonasKop](https://github.com/JonasKop))
+* resource/netbox_virtual_machine: Support auto-calculation of `disk_size_mb` attribute ([#854](https://github.com/e-breuninger/terraform-provider-netbox/pull/854) by [@keshy7](https://github.com/keshy7))
+* resource/netbox_ip_range: Add `custom_fields` attribute ([#842](https://github.com/e-breuninger/terraform-provider-netbox/pull/842) by [@jonas-sjodin-stegra](https://github.com/jonas-sjodin-stegra))
+* resource/netbox_available_ip_address: Add `custom_fields` attribute ([#841](https://github.com/e-breuninger/terraform-provider-netbox/pull/841) by [@jonas-sjodin-stegra](https://github.com/jonas-sjodin-stegra))
+* resource/netbox_interface: Add `bridge_interface_id` attribute ([#856](https://github.com/e-breuninger/terraform-provider-netbox/pull/856) by [@mraerino](https://github.com/mraerino))
+* data-source/netbox_ip_addresses: Add `custom_fields` attribute ([#848](https://github.com/e-breuninger/terraform-provider-netbox/pull/848) by [@jonas-sjodin-stegra](https://github.com/jonas-sjodin-stegra))
+* data-source/netbox_vlans: Add `id` attribute ([#662](https://github.com/e-breuninger/terraform-provider-netbox/pull/662) by [@rypti](https://github.com/rypti))
+* resource/netbox_cable: Add `usb` as option for `type` attribute ([#858](https://github.com/e-breuninger/terraform-provider-netbox/pull/858) by [@JonasKop](https://github.com/JonasKop))
+
+BUG FIXES
+
+* provider: use better error checking in many read functions ([#864](https://github.com/e-breuninger/terraform-provider-netbox/pull/864) by [@MrKeiKun](https://github.com/MrKeiKun))
+* resource/netbox_token: Handle `expires` field correctly ([#853](https://github.com/e-breuninger/terraform-provider-netbox/pull/853) by [@Oceaneyes123](https://github.com/Oceaneyes123))
 
 ## 5.2.1 (March 12th, 2026)
 

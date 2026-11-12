@@ -12,7 +12,7 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Set up Go
         uses: actions/setup-go@v6
         with:
@@ -45,13 +45,42 @@ jobs:
           - v4.4.8
           - v4.4.9
           - v4.4.10
+          # - v4.5.0 # this version cannot be spun up for testing due to startup stall at "Building search index"
+          - v4.5.1
+          - v4.5.2
+          - v4.5.3
+          - v4.5.4
+          - v4.5.5
+          - v4.5.6
+          - v4.5.7
+          - v4.5.8
+          - v4.5.9
+          - v4.5.10
+          - v4.6.0
+          - v4.6.1
+          - v4.6.2
+          - v4.6.3
+          - v4.6.4
+          - v4.6.5
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Set up Go
         uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
       - name: testacc
-        run: make -e testacc
+        # Retry once on failure. Netbox itself is occasionally flaky at startup
+        # or hits transient server-side bugs on a specific patch version; a
+        # single retry (with a clean teardown in between) clears those without
+        # masking real, reproducible failures.
+        run: |
+          for attempt in 1 2; do
+            echo "::group::testacc attempt $attempt (Netbox ${NETBOX_VERSION})"
+            if make -e testacc; then exit 0; fi
+            echo "::endgroup::"
+            echo "::warning::testacc attempt $attempt failed on ${NETBOX_VERSION}; tearing down and retrying"
+            make docker-down || true
+          done
+          exit 1
         env:
           NETBOX_VERSION: ${{ matrix.netbox-version }}

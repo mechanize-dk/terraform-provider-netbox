@@ -3,6 +3,7 @@ package netbox
 import (
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	netboxclient "github.com/fbreckle/go-netbox/netbox/client"
@@ -83,8 +84,18 @@ func (cfg *Config) Client() (*netboxclient.NetBoxAPI, error) {
 		Timeout:   time.Second * time.Duration(cfg.RequestTimeout),
 	}
 
+	// Also apply request_timeout to the per-operation timeout, which otherwise
+	// defaults to 30s independently of http.Client.Timeout.
+	if cfg.RequestTimeout > 0 {
+		httptransport.DefaultTimeout = time.Second * time.Duration(cfg.RequestTimeout)
+	}
+
 	transport := httptransport.NewWithClient(parsedURL.Host, parsedURL.Path+netboxclient.DefaultBasePath, desiredRuntimeClientSchemes, httpClient)
-	transport.DefaultAuthentication = httptransport.APIKeyAuth("Authorization", "header", fmt.Sprintf("Token %v", cfg.APIToken))
+	authScheme := "Token"
+	if strings.HasPrefix(cfg.APIToken, "nbt_") {
+		authScheme = "Bearer"
+	}
+	transport.DefaultAuthentication = httptransport.APIKeyAuth("Authorization", "header", fmt.Sprintf("%s %v", authScheme, cfg.APIToken))
 	transport.SetLogger(log.StandardLogger())
 	netboxClient := netboxclient.New(transport, nil)
 

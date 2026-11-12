@@ -1,6 +1,7 @@
 package netbox
 
 import (
+	"encoding/json"
 	"strconv"
 
 	"github.com/fbreckle/go-netbox/netbox/client/extras"
@@ -8,6 +9,35 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 )
+
+// customFieldDefaultToAPI - converts the tf attribute to the json netbox expects
+func customFieldDefaultToAPI(d *schema.ResourceData) interface{} {
+	v, ok := d.GetOk("default")
+	if !ok {
+		return nil
+	}
+	s := v.(string)
+	var parsed interface{}
+	if err := json.Unmarshal([]byte(s), &parsed); err != nil {
+		return s
+	}
+	return parsed
+}
+
+// normalizeCustomFieldDefault - state/config always compare as equal,
+// strings left the same
+func normalizeCustomFieldDefault(v interface{}) string {
+	s := v.(string)
+	var parsed interface{}
+	if json.Unmarshal([]byte(s), &parsed) != nil {
+		return s
+	}
+	b, err := json.Marshal(parsed)
+	if err != nil {
+		return s
+	}
+	return string(b)
+}
 
 func resourceCustomField() *schema.Resource {
 	return &schema.Resource{
@@ -38,6 +68,8 @@ func resourceCustomField() *schema.Resource {
 					models.CustomFieldTypeValueURL,
 					models.CustomFieldTypeValueSelect,
 					models.CustomFieldTypeValueMultiselect,
+					models.CustomFieldTypeValueObject,
+					models.CustomFieldTypeValueMultiobject,
 					models.CustomFieldTypeValueJSON,
 				}, false),
 			},
@@ -57,8 +89,9 @@ func resourceCustomField() *schema.Resource {
 				},
 			},
 			"default": {
-				Type:     schema.TypeString,
-				Optional: true,
+				Type:      schema.TypeString,
+				Optional:  true,
+				StateFunc: normalizeCustomFieldDefault,
 			},
 			"description": {
 				Type:     schema.TypeString,
@@ -92,6 +125,10 @@ func resourceCustomField() *schema.Resource {
 				Type:     schema.TypeInt,
 				Optional: true,
 			},
+			"related_object_type": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
 		},
 		Importer: &schema.ResourceImporter{
 			StateContext: schema.ImportStatePassthroughContext,
@@ -105,15 +142,16 @@ func resourceNetboxCustomFieldUpdate(d *schema.ResourceData, m interface{}) erro
 	id, _ := strconv.ParseInt(d.Id(), 10, 64)
 
 	data := &models.WritableCustomField{
-		Name:            strToPtr(d.Get("name").(string)),
-		Type:            d.Get("type").(string),
-		Default:         d.Get("default").(string),
-		Description:     d.Get("description").(string),
-		GroupName:       d.Get("group_name").(string),
-		Label:           d.Get("label").(string),
-		Required:        d.Get("required").(bool),
-		ValidationRegex: d.Get("validation_regex").(string),
-		Weight:          int64ToPtr(int64(d.Get("weight").(int))),
+		Name:              strToPtr(d.Get("name").(string)),
+		Type:              d.Get("type").(string),
+		Default:           customFieldDefaultToAPI(d),
+		Description:       d.Get("description").(string),
+		GroupName:         d.Get("group_name").(string),
+		Label:             d.Get("label").(string),
+		Required:          d.Get("required").(bool),
+		ValidationRegex:   d.Get("validation_regex").(string),
+		RelatedObjectType: d.Get("related_object_type").(string),
+		Weight:            int64ToPtr(int64(d.Get("weight").(int))),
 	}
 
 	choiceSet, ok := d.GetOk("choice_set_id")
@@ -133,11 +171,11 @@ func resourceNetboxCustomFieldUpdate(d *schema.ResourceData, m interface{}) erro
 
 	vmax, ok := d.GetOk("validation_maximum")
 	if ok {
-		data.ValidationMaximum = int64ToPtr(int64(vmax.(int)))
+		data.ValidationMaximum = float64ToPtr(float64(vmax.(int)))
 	}
 	vmin, ok := d.GetOk("validation_minimum")
 	if ok {
-		data.ValidationMinimum = int64ToPtr(int64(vmin.(int)))
+		data.ValidationMinimum = float64ToPtr(float64(vmin.(int)))
 	}
 
 	params := extras.NewExtrasCustomFieldsUpdateParams().WithID(id).WithData(data)
@@ -155,15 +193,16 @@ func resourceNetboxCustomFieldCreate(d *schema.ResourceData, m interface{}) erro
 	api := m.(*providerState)
 
 	data := &models.WritableCustomField{
-		Name:            strToPtr(d.Get("name").(string)),
-		Type:            d.Get("type").(string),
-		Default:         d.Get("default").(string),
-		Description:     d.Get("description").(string),
-		GroupName:       d.Get("group_name").(string),
-		Label:           d.Get("label").(string),
-		Required:        d.Get("required").(bool),
-		ValidationRegex: d.Get("validation_regex").(string),
-		Weight:          int64ToPtr(int64(d.Get("weight").(int))),
+		Name:              strToPtr(d.Get("name").(string)),
+		Type:              d.Get("type").(string),
+		Default:           customFieldDefaultToAPI(d),
+		Description:       d.Get("description").(string),
+		GroupName:         d.Get("group_name").(string),
+		Label:             d.Get("label").(string),
+		Required:          d.Get("required").(bool),
+		ValidationRegex:   d.Get("validation_regex").(string),
+		RelatedObjectType: d.Get("related_object_type").(string),
+		Weight:            int64ToPtr(int64(d.Get("weight").(int))),
 	}
 
 	choiceSet, ok := d.GetOk("choice_set_id")
@@ -183,11 +222,11 @@ func resourceNetboxCustomFieldCreate(d *schema.ResourceData, m interface{}) erro
 
 	vmax, ok := d.GetOk("validation_maximum")
 	if ok {
-		data.ValidationMaximum = int64ToPtr(int64(vmax.(int)))
+		data.ValidationMaximum = float64ToPtr(float64(vmax.(int)))
 	}
 	vmin, ok := d.GetOk("validation_minimum")
 	if ok {
-		data.ValidationMinimum = int64ToPtr(int64(vmin.(int)))
+		data.ValidationMinimum = float64ToPtr(float64(vmin.(int)))
 	}
 
 	params := extras.NewExtrasCustomFieldsCreateParams().WithData(data)
@@ -233,8 +272,15 @@ func resourceNetboxCustomFieldRead(d *schema.ResourceData, m interface{}) error 
 	}
 
 	d.Set("weight", customField.Weight)
+	// JSON value (number, bool, list) is re-encoded to its JSON text.
 	if customField.Default != nil {
-		d.Set("default", customField.Default)
+		if s, isStr := customField.Default.(string); isStr {
+			d.Set("default", s)
+		} else if b, err := json.Marshal(customField.Default); err == nil {
+			d.Set("default", string(b))
+		}
+	} else {
+		d.Set("default", "")
 	}
 
 	d.Set("description", customField.Description)
