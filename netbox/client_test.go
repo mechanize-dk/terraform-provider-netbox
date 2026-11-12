@@ -4,8 +4,10 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/fbreckle/go-netbox/netbox/client/status"
+	httptransport "github.com/go-openapi/runtime/client"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -85,6 +87,60 @@ func TestAdditionalHeadersSet(t *testing.T) {
 
 	req := status.NewStatusListParams()
 	client.Status.StatusList(req, nil)
+}
+
+func TestV1TokenUsesTokenScheme(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		auth := r.Header.Get("Authorization")
+		assert.Equal(t, "Token 07b12b765127747e4afd56cb531b7bf9c61f3c30", auth)
+	}))
+	defer ts.Close()
+
+	config := Config{
+		APIToken:  "07b12b765127747e4afd56cb531b7bf9c61f3c30",
+		ServerURL: ts.URL,
+	}
+
+	client, err := config.Client()
+	assert.NoError(t, err)
+
+	req := status.NewStatusListParams()
+	client.Status.StatusList(req, nil)
+}
+
+func TestV2TokenUsesBearerScheme(t *testing.T) {
+	v2Token := "nbt_abc1234567890abcdef.checksum1234"
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		auth := r.Header.Get("Authorization")
+		assert.Equal(t, "Bearer "+v2Token, auth)
+	}))
+	defer ts.Close()
+
+	config := Config{
+		APIToken:  v2Token,
+		ServerURL: ts.URL,
+	}
+
+	client, err := config.Client()
+	assert.NoError(t, err)
+
+	req := status.NewStatusListParams()
+	client.Status.StatusList(req, nil)
+}
+
+func TestRequestTimeoutAppliesToOperationTimeout(t *testing.T) {
+	original := httptransport.DefaultTimeout
+	defer func() { httptransport.DefaultTimeout = original }()
+
+	config := Config{
+		APIToken:       "07b12b765127747e4afd56cb531b7bf9c61f3c30",
+		ServerURL:      "http://localhost",
+		RequestTimeout: 90,
+	}
+
+	_, err := config.Client()
+	assert.NoError(t, err)
+	assert.Equal(t, 90*time.Second, httptransport.DefaultTimeout)
 }
 
 /* TODO
