@@ -1,3 +1,11 @@
+## 5.8.1 (Unreleased)
+
+> mechanize-dk fork release.
+
+CHANGES
+
+* No change in provider behaviour. Fixes the `golangci` and `pre-commit` checks, which have failed on every commit since 5.2.5. Done only to get rid of the red marks.
+
 ## 5.8.0 (November 12th, 2026)
 
 > mechanize-dk fork release.

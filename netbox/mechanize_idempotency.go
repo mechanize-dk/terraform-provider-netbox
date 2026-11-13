@@ -89,6 +89,7 @@ var mechanizeLookups = map[string]mechanizeLookupFunc{
 // look-up-first adoption. Called once from provider.go. All covered resources
 // use non-context Create/Read (verified), so wrapping those fields is safe.
 func mechanizeAddIdempotency(resources map[string]*schema.Resource) {
+	//nolint:staticcheck // SA1019: upstream resources only set the deprecated Create/Read, so wrapping them must read those fields.
 	for name, lookup := range mechanizeLookups {
 		r, ok := resources[name]
 		if !ok || r.Create == nil || r.Read == nil {
