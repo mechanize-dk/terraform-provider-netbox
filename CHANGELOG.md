@@ -1,4 +1,4 @@
-## 5.8.1 (Unreleased)
+## 5.8.1 (2026-11-16)
 
 > mechanize-dk fork release.
 
